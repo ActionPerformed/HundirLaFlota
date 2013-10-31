@@ -7,10 +7,18 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.RandomAccessFile;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.JButton;
+import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.Timer;
+import javax.swing.filechooser.FileNameExtensionFilter;
 
 /**
  * Hundir la flota
@@ -41,8 +49,8 @@ import javax.swing.Timer;
  * 
  * barcosIA: tablero de defensa de la IA. True si hay barco, false si no
  * 
- * empiezaJuego: permite pasar a la fase de disparos, finaliza la de colocacion de piezas
- * limpiaTablero: resetea el juego
+ * btEmpiezaJuego: permite pasar a la fase de disparos, finaliza la de colocacion de piezas
+ * btLimpiaTablero: resetea el juego
  * 
  * lbLetraDef, lbLetraAt, lbNumeroDef, lbNumeroAt: etiquetas para marcar las casillas de juego
  * 
@@ -50,7 +58,7 @@ import javax.swing.Timer;
  * lbImpactosIA: Número de impactos restantes de la IA 
  * 
  * @author ActionPerformed
- * @version 1.0
+ * @version 1.1
  */
 public class Main extends javax.swing.JFrame implements ActionListener, MouseListener, MouseWheelListener{
 
@@ -77,8 +85,8 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
     
     boolean[][] barcosIA = new boolean[dimensionTablero][dimensionTablero];
     
-    JButton empiezaJuego = new JButton();
-    JButton limpiaTablero = new JButton();
+    JButton btEmpiezaJuego = new JButton();
+    JButton btLimpiaTablero = new JButton();
     
     String[] letra = {"A","B","C","D","E","F","G","H","I","J"};
     String[] numero = {"1","2","3","4","5","6","7","8","9","10"};
@@ -161,15 +169,15 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
             btColocaBarco[i].setBounds(50+110*(i%2), 425+40*(i/2), 100, 30);
         }
         
-        add(empiezaJuego);
-        empiezaJuego.addActionListener(this);
-        empiezaJuego.setBounds(270,425,100,30);
-        empiezaJuego.setText("Jugar");
+        add(btEmpiezaJuego);
+        btEmpiezaJuego.addActionListener(this);
+        btEmpiezaJuego.setBounds(270,425,100,30);
+        btEmpiezaJuego.setText("Jugar");
         
-        add(limpiaTablero);
-        limpiaTablero.addActionListener(this);
-        limpiaTablero.setBounds(270,465,100,30);
-        limpiaTablero.setText("Limpiar");
+        add(btLimpiaTablero);
+        btLimpiaTablero.addActionListener(this);
+        btLimpiaTablero.setBounds(270,465,100,30);
+        btLimpiaTablero.setText("Limpiar");
         
         add(lbImpactosJugador);
         lbImpactosJugador.setBounds(500,425,200,30);
@@ -183,8 +191,8 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * numero de barcos a colocar, tablero de la IA, texto y color de los botones...
      */
     public void initMoreComponents(){
-        impactosJugador=30;
-        impactosIA=30;
+        impactosJugador=20;
+        impactosIA=20;
         numColocaBarco = new int[]{4, 3, 2, 1};
         turnoJugador = true; //será false en los chequeos posteriores al turno del jugador
         faseColocarPiezas=true;
@@ -199,8 +207,10 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         } 
         
         //empiezaJuego será true cuando se hayan colocado todos los barcos
-        empiezaJuego.setEnabled(false);
-        limpiaTablero.setEnabled(true);
+        btEmpiezaJuego.setEnabled(false);
+        btLimpiaTablero.setEnabled(true);
+        
+        menuItGuardar.setEnabled(false);
         
         //Inicializamos los colores de las casillas de los diferentes tableros
         for (int i = 0; i < dimensionTablero; i++) {
@@ -255,7 +265,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
              && !btColocaBarco[2].isEnabled()
              && !btColocaBarco[1].isEnabled()
              && !btColocaBarco[0].isEnabled()){
-                empiezaJuego.setEnabled(true);
+                btEmpiezaJuego.setEnabled(true);
             }
         }
     }
@@ -391,7 +401,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         for (int i = 0; i < btColocaBarco.length; i++) {
             btColocaBarco[i].setEnabled(false);
         }
-        empiezaJuego.setEnabled(false);
+        btEmpiezaJuego.setEnabled(false);
     }
     
     @Override
@@ -534,9 +544,9 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * 
      * Si clicamos:
      * 
-     * el boton limpiaTablero --> resetearemos el juego
+     * el boton btLimpiaTablero --> resetearemos el juego
      * 
-     * el boton empiezaJuego --> entraremos en la fase de disparos
+     * el boton btEmpiezaJuego --> entraremos en la fase de disparos
      * 
      * 
      * Mientras nos hallemos en la fase de colocación de piezas:
@@ -560,9 +570,11 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
     @Override
     public void actionPerformed (ActionEvent evt){
         if (turnoJugador) {
-            if (evt.getSource()==limpiaTablero){
+            if (evt.getSource()==btLimpiaTablero){
                 menuItNuevoActionPerformed(evt); //Reseteamos el tablero
-            }else if (evt.getSource()==empiezaJuego){
+            }else if (evt.getSource()==btEmpiezaJuego){
+                btEmpiezaJuego.setEnabled(false);
+                menuItGuardar.setEnabled(true);
                 faseColocarPiezas = false;
             }
 
@@ -644,7 +656,10 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         menuBar = new javax.swing.JMenuBar();
         menuJuego = new javax.swing.JMenu();
         menuItNuevo = new javax.swing.JMenuItem();
+        menuItCargar = new javax.swing.JMenuItem();
+        menuItGuardar = new javax.swing.JMenuItem();
         menuItFinalizar = new javax.swing.JMenuItem();
+        jSeparator1 = new javax.swing.JPopupMenu.Separator();
         menuItSalir = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
@@ -662,6 +677,22 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         });
         menuJuego.add(menuItNuevo);
 
+        menuItCargar.setText("Cargar juego...");
+        menuItCargar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                menuItCargarActionPerformed(evt);
+            }
+        });
+        menuJuego.add(menuItCargar);
+
+        menuItGuardar.setText("Guardar juego...");
+        menuItGuardar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                menuItGuardarActionPerformed(evt);
+            }
+        });
+        menuJuego.add(menuItGuardar);
+
         menuItFinalizar.setText("Finalizar juego");
         menuItFinalizar.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -669,6 +700,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
             }
         });
         menuJuego.add(menuItFinalizar);
+        menuJuego.add(jSeparator1);
 
         menuItSalir.setAccelerator(javax.swing.KeyStroke.getKeyStroke(java.awt.event.KeyEvent.VK_X, java.awt.event.InputEvent.ALT_MASK));
         menuItSalir.setText("Salir");
@@ -701,14 +733,270 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         muestraSolucion();
     }                                               
 
+/**
+ * Abandona el juego
+ * 
+ * @param evt 
+ */    
     private void menuItSalirActionPerformed(java.awt.event.ActionEvent evt) {                                            
         System.exit(0);
     }                                           
 
+/**
+ * Reinicia el juego
+ * 
+ * @param evt 
+ */
     private void menuItNuevoActionPerformed(java.awt.event.ActionEvent evt) {                                            
         initMoreComponents();
     }                                           
 
+/**
+ * Ejecuta el menú de guardar partida. El archivo destino deberá tener extensión
+ * .hdf para que el programa ejecute el guardado
+ * 
+ * @param evt 
+ */
+    private void menuItGuardarActionPerformed(java.awt.event.ActionEvent evt) {                                              
+        File fichero;
+        JFileChooser eligeFichero;
+        FileNameExtensionFilter filter;
+        
+        eligeFichero = new JFileChooser();        
+        filter = new FileNameExtensionFilter("Partidas de Hundir La Flota (.hdf)", "hdf");
+        eligeFichero.setFileFilter(filter);
+        int seleccion = eligeFichero.showSaveDialog(null);
+        
+        if (seleccion == JFileChooser.APPROVE_OPTION){
+            fichero = eligeFichero.getSelectedFile();
+            if (!fichero.getName().endsWith(".hdf")) {
+               JOptionPane.showMessageDialog(this, "Debe guardar el fichero en un formato válido (.hdf)");
+               menuItGuardarActionPerformed(evt);
+            }else{
+                try {
+                    guardarDatos(fichero);
+                } catch (IOException ex) {
+                    Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (Exception ex){
+                    //Aqui deberia añadir algo y eso
+                }
+            }
+        }
+    }                                             
+
+/**
+ * Ejecuta el menú de cargar partida. Por defecto, el programa buscará archivos
+ * con extensión .hdf
+ * 
+ * @param evt 
+ */ 
+    private void menuItCargarActionPerformed(java.awt.event.ActionEvent evt) {                                             
+        JFileChooser eligeFichero;        
+        eligeFichero = new JFileChooser();
+        FileNameExtensionFilter filter;
+        File fichero;
+        
+        filter = new FileNameExtensionFilter("Partidas de Hundir La Flota (.hdf)", "hdf");
+        eligeFichero.setFileFilter(filter);
+        int seleccion = eligeFichero.showOpenDialog(null);
+        
+        if (seleccion == JFileChooser.APPROVE_OPTION){            
+            fichero = eligeFichero.getSelectedFile();
+            try {
+                cargarDatos(cargaRegistro(fichero));
+                faseColocarPiezas=false;
+            } catch (FileNotFoundException ex) {
+                JOptionPane.showMessageDialog(this, "El fichero indicado no existe");
+                menuItCargarActionPerformed(evt);
+            } catch (IOException ex) {
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            } catch (Exception ex) {
+                Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+            }
+        }
+    }                                            
+
+     /**
+     * Añade un valor entero al final del fichero indicado,
+     * mediante el uso de RandomAccessFile
+     *
+     * @param fichero fichero donde se añadirá el valor entero
+     * @param entero valor entero que se añadirá al fichero
+     * @throws FileNotFoundException
+     * @throws IOException
+     */
+    public static void grabarDatos(File fichero, int entero) throws FileNotFoundException, IOException{
+        RandomAccessFile rndFile = new RandomAccessFile(fichero,"rw"); //creo un RandomAccessFile que permite lectura y escritura (RW)
+        rndFile.seek(rndFile.length()); //Me posiciono, mediante el seek, al final del fichero
+        rndFile.writeInt(entero); // grabo el dato
+        rndFile.close();
+    }
+    
+    /**
+     * guardarDatos recorre las diferentes variables de juego y las codifica,
+     * para posteriormente grabar su valor en el fichero indicado mediante el uso
+     * de grabarDatos
+     * 
+     * @param fichero fichero donde se guardarán los datos
+     * @throws Exception 
+     */
+    
+    public void guardarDatos(File fichero) throws Exception{
+        //Tablero defensa del jugador
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (tableroDefensa[i][j].getBackground()==colorAgua) {
+                    grabarDatos(fichero, 0);
+                }else if (tableroDefensa[i][j].getBackground()==colorBarco){
+                    grabarDatos(fichero, 1);
+                }else if (tableroDefensa[i][j].getBackground()==colorTocado){
+                    grabarDatos(fichero, 2);
+                }else if (tableroDefensa[i][j].getBackground()==colorAguaTocado){
+                    grabarDatos(fichero, 3);
+                }else{
+                    throw new Exception();
+                }
+            }
+        }
+        
+        //Tablero ataque del jugador
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (tableroAtaque[i][j].getBackground()==colorAgua) {
+                    grabarDatos(fichero, 0);
+                }else if (tableroAtaque[i][j].getBackground()==colorTocado){
+                    grabarDatos(fichero, 2);
+                }else{
+                    grabarDatos(fichero, 4);
+                }
+            }
+        }
+        
+        //Tablero defensa IA
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (barcosIA[i][j]) {
+                    grabarDatos(fichero, 1);
+                }else{
+                    grabarDatos(fichero, 0);
+                }
+            }
+        }
+        
+        //turno de juego
+        
+        if (turnoJugador) {
+            grabarDatos(fichero, 1);
+        }else{
+            grabarDatos(fichero, 0);
+         }
+        
+        //puntos de los jugadores
+        grabarDatos(fichero, impactosJugador);
+        grabarDatos(fichero, impactosIA);
+    }
+  
+    /**
+     * cargaFichero usa randomAccessFile para leer el los valores enteros de
+     * un archivo y devuelve un array con todos los datos leidos
+     * 
+     * 
+     * @param fichero fichero a leer
+     * @return
+     * @throws FileNotFoundException
+     * @throws IOException 
+     */
+    public static int[] cargaRegistro(File fichero) throws FileNotFoundException, IOException{
+        RandomAccessFile rndFile = new RandomAccessFile(fichero,"r"); //Random de solo lectura
+        int[] cargaRegistro = new int[(int)(rndFile.length()/4)];
+        for (int i = 0; i < cargaRegistro.length; i++) {
+            cargaRegistro[i]=rndFile.readInt();
+        }
+        rndFile.close(); //Cerrar, esto siempre
+        return cargaRegistro;
+    }
+    
+    /**
+     * cargarDatos descodifica el contenido de cargaRegistro y genera una partida
+     * válida de Hundir La Flota, inciializando los valore y botones correspondientes
+     * 
+     * @param cargaRegistro array de enteros que posee los datos del juego a cargar
+     * @throws FileNotFoundException
+     * @throws IOException
+     * @throws Exception 
+     */
+    public void cargarDatos(int[] cargaRegistro) throws FileNotFoundException, IOException, Exception{
+        //Tablero defensa del jugador
+        int posicion=0;
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (cargaRegistro[posicion]==0) {
+                    tableroDefensa[i][j].setBackground(colorAgua);
+                }else if (cargaRegistro[posicion]==1){
+                    tableroDefensa[i][j].setBackground(colorBarco);
+                }else if (cargaRegistro[posicion]==2){
+                    tableroDefensa[i][j].setBackground(colorTocado);
+                }else if (cargaRegistro[posicion]==3){
+                    tableroDefensa[i][j].setBackground(colorAguaTocado);
+                }else{
+                    throw new Exception();
+                }
+                posicion++;
+            }
+        }
+        
+        //Tablero ataque del jugador
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (cargaRegistro[posicion]==0) {
+                    tableroAtaque[i][j].setBackground(colorAgua);
+                }else if (cargaRegistro[posicion]==2){
+                    tableroAtaque[i][j].setBackground(colorTocado);
+                }else{
+                    tableroAtaque[i][j].setBackground(null);
+                }
+                posicion++;
+            }
+        }
+        
+        //Tablero defensa IA
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                if (cargaRegistro[posicion]==1) {
+                    barcosIA[i][j]=true;
+                }else{
+                    barcosIA[i][j]=false;
+                }
+                posicion++;
+            }
+        }
+        
+        //turno de juego
+        
+        if (cargaRegistro[posicion]==1) {
+            turnoJugador=true;
+        }else{
+            turnoJugador=false;
+         }
+        posicion++;
+        
+        //puntos de los jugadores
+        impactosJugador=cargaRegistro[posicion];
+        posicion++;
+        impactosIA=cargaRegistro[posicion];
+        
+        //Actualizo el interfaz
+        lbImpactosJugador.setText("Barcos vivos jugador: "+impactosJugador);
+        lbImpactosIA.setText("Barcos vivos IA: "+impactosIA);
+        
+        for (int i = 0; i < btColocaBarco.length; i++) {
+            btColocaBarco[i].setEnabled(false);
+        }
+        
+        btEmpiezaJuego.setEnabled(false);
+        menuItGuardar.setEnabled(true);
+    }
+    
     /**
      * @param args the command line arguments
      */
@@ -744,8 +1032,11 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         });
     }
     // Variables declaration - do not modify                     
+    private javax.swing.JPopupMenu.Separator jSeparator1;
     private javax.swing.JMenuBar menuBar;
+    private javax.swing.JMenuItem menuItCargar;
     private javax.swing.JMenuItem menuItFinalizar;
+    private javax.swing.JMenuItem menuItGuardar;
     private javax.swing.JMenuItem menuItNuevo;
     private javax.swing.JMenuItem menuItSalir;
     private javax.swing.JMenu menuJuego;
