@@ -10,7 +10,8 @@ import java.awt.event.MouseWheelListener;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.JButton;
@@ -25,14 +26,8 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * 
  * El juego permite jugar contra una IA simple, mediante tableros de 10x10 casillas
  * Se divide en dos fases, la de colocación de pizas y la de juego
- * 
- * Constantes:
- * 
+ *  
  * dimensionTablero: la dimensión de los tableros de juego
- * colorAgua: color inicial del tablero del jugador
- * colorBarco: indica donde ha colocado un barco el jugador
- * colorTocado: Indica los disparos que han tenido exito
- * colorAguaTocado: Indica los disparos que no han tenido exito
  * 
  * orientacionBarco: Determina la orientación del barco en la fase de colocación.
  *                  Varía de true a false con la rueda del ratón. 
@@ -52,53 +47,49 @@ import javax.swing.filechooser.FileNameExtensionFilter;
  * btEmpiezaJuego: permite pasar a la fase de disparos, finaliza la de colocacion de piezas
  * btLimpiaTablero: resetea el juego
  * 
- * lbLetraDef, lbLetraAt, lbNumeroDef, lbNumeroAt: etiquetas para marcar las casillas de juego
- * 
  * lbImpactosJugador: Numero de impactos restantes del jugador
  * lbImpactosIA: Número de impactos restantes de la IA 
  * 
  * @author ActionPerformed
- * @version 1.1
+ * @version 1.4
  */
 public class Main extends javax.swing.JFrame implements ActionListener, MouseListener, MouseWheelListener{
 
-    final int dimensionTablero = 10;
-    final Color colorAgua = new Color(0x6f, 0x8e, 0xc2);
-    final Color colorBarco = new Color(0x55, 0x55, 0x55);
-    final Color colorTocado = new Color(0xc2, 0x23, 0x13);
-    final Color colorAguaTocado = new Color(0xff, 0xff, 0xff);
+    private javax.swing.JPopupMenu.Separator jSeparator1;
+    private javax.swing.JMenuBar menuBar;
+    private javax.swing.JMenuItem menuItCargar;
+    private javax.swing.JMenuItem menuItFinalizar;
+    private javax.swing.JMenuItem menuItGuardar;
+    private javax.swing.JMenuItem menuItNuevo;
+    private javax.swing.JMenuItem menuItSalir;
+    private javax.swing.JMenu menuJuego;
     
-    boolean orientacionBarco; 
-    boolean colision; 
-    boolean faseColocarPiezas; 
+    private final int dimensionTablero = 10;
     
-    JButton[][] tableroDefensa = new JButton[dimensionTablero][dimensionTablero];
-    JButton[][] tableroAtaque = new JButton[dimensionTablero][dimensionTablero];
+    private final Tablero tableroDefensa = new Tablero(dimensionTablero,"Tablero de defensa");
+    private final Tablero tableroAtaque = new Tablero(dimensionTablero,"Tablero de ataque");
     
-    JButton[] btColocaBarco = new JButton[4];
-    int[] numColocaBarco;
-    int dimBarco;
+    private boolean orientacionBarco; 
+    private boolean colision; 
+    private boolean faseColocarPiezas; 
+    private boolean turnoJugador;
     
-    int impactosJugador;
-    int impactosIA;
-    boolean turnoJugador;
+    private final JButton[] btColocaBarco = new JButton[4];
+    private final JButton btEmpiezaJuego = new JButton();
+    private final JButton btLimpiaTablero = new JButton();
     
-    boolean[][] barcosIA = new boolean[dimensionTablero][dimensionTablero];
+    private final JLabel lbImpactosJugador = new JLabel();
+    private final JLabel lbImpactosIA = new JLabel();
+    private final JLabel lbBackground = new JLabel();
     
-    JButton btEmpiezaJuego = new JButton();
-    JButton btLimpiaTablero = new JButton();
+    private int[] numColocaBarco;
+    private int dimBarco;
+    private int impactosJugador;
     
-    String[] letra = {"A","B","C","D","E","F","G","H","I","J"};
-    String[] numero = {"1","2","3","4","5","6","7","8","9","10"};
-    
-    JLabel[] lbLetraDef = new JLabel[dimensionTablero];
-    JLabel[] lbNumeroDef = new JLabel[dimensionTablero];
-    
-    JLabel[] lbLetraAt = new JLabel[dimensionTablero];
-    JLabel[] lbNumeroAt = new JLabel[dimensionTablero];
-    
-    JLabel lbImpactosJugador = new JLabel();
-    JLabel lbImpactosIA = new JLabel();
+    private int impactosIA;
+    private boolean[][] barcosIA = new boolean[dimensionTablero][dimensionTablero];
+    private List<int[]> tableroAtaqueIA;
+    private List<int[]> tableroAtaqueIAPrioritario;
     
     /**
      * Construye el objeto que se lanzará para iniciar el juego
@@ -116,44 +107,17 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * Generamos los tableros de juego y sus listener asociados
      */
     public void crearTableros(){
+       
+        add(tableroDefensa);
+        tableroDefensa.setBounds(10, 10, 400, 400);
+        add(tableroAtaque);
+        tableroAtaque.setBounds(425, 10, 400, 400);
         for (int i = 0; i < dimensionTablero; i++) {
-            
-            lbLetraDef[i] = new JLabel();
-            add(lbLetraDef[i]);
-            lbLetraDef[i].setBounds(10, 35*(i+1), 30, 30);
-            lbLetraDef[i].setText(letra[i]);
-            
-            lbLetraAt[i] = new JLabel();
-            add(lbLetraAt[i]);
-            lbLetraAt[i].setBounds(410, 35*(i+1), 30, 30);
-            lbLetraAt[i].setText(letra[i]);
-            
-            lbNumeroDef[i] = new JLabel();
-            add(lbNumeroDef[i]);
-            lbNumeroDef[i].setBounds(35*(i+1), 10, 30, 30);
-            lbNumeroDef[i].setText(numero[i]);
-            
-            lbNumeroAt[i] = new JLabel();
-            add(lbNumeroAt[i]);
-            lbNumeroAt[i].setBounds(400+35*(i+1), 10, 30, 30);
-            lbNumeroAt[i].setText(numero[i]);
-            
             for (int j = 0; j < dimensionTablero; j++) {
-                tableroDefensa[i][j] = new JButton();
-                add(tableroDefensa[i][j]);
-                tableroDefensa[i][j].addActionListener(this);
-                tableroDefensa[i][j].setEnabled(true);
-                tableroDefensa[i][j].setBounds(35*(j+1), 35*(i+1), 30, 30);
-                tableroDefensa[i][j].setText("");
-                tableroDefensa[i][j].addMouseWheelListener(this);
-                tableroDefensa[i][j].addMouseListener(this);
-                
-                tableroAtaque[i][j] = new JButton();
-                add(tableroAtaque[i][j]);
-                tableroAtaque[i][j].addActionListener(this);
-                tableroAtaque[i][j].setEnabled(true);
-                tableroAtaque[i][j].setBounds(400+35*(j+1), 35*(i+1), 30, 30);
-                tableroAtaque[i][j].setText("");
+                tableroDefensa.getBtCasilla()[i][j].addActionListener(this);
+                tableroDefensa.getBtCasilla()[i][j].addMouseWheelListener(this);
+                tableroDefensa.getBtCasilla()[i][j].addMouseListener(this);
+                tableroAtaque.getBtCasilla()[i][j].addActionListener(this);
             }
         }
     }
@@ -191,14 +155,28 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * numero de barcos a colocar, tablero de la IA, texto y color de los botones...
      */
     public void initMoreComponents(){
-        impactosJugador=20;
-        impactosIA=20;
+        impactosJugador=10;
+        impactosIA=10;
         numColocaBarco = new int[]{4, 3, 2, 1};
         turnoJugador = true; //será false en los chequeos posteriores al turno del jugador
         faseColocarPiezas=true;
         orientacionBarco=true;
         colision=false;
         dimBarco=0;
+        
+        
+        add(lbBackground);
+        lbBackground.setBounds(0,0,850,600);
+        lbBackground.setIcon(new javax.swing.ImageIcon(getClass().getResource("/img/background.png")));
+        
+        tableroAtaqueIA = new ArrayList<>();
+        for (int i = 0; i < dimensionTablero; i++) {
+            for (int j = 0; j < dimensionTablero; j++) {
+                tableroAtaqueIA.add(new int[] {i,j});
+            }
+        }
+        
+        tableroAtaqueIAPrioritario = new ArrayList<>();
         
         //Activamos y añadimos texto a los botones de colocación de barcos
         for (int i = 0; i < btColocaBarco.length; i++) {
@@ -215,8 +193,8 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         //Inicializamos los colores de las casillas de los diferentes tableros
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
-                tableroDefensa[i][j].setBackground(colorAgua);
-                tableroAtaque[i][j].setBackground(null);
+                tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorAgua);
+                tableroAtaque.getBtCasilla()[i][j].setBackground(null);
                 barcosIA[i][j]=false;
             }
         }
@@ -226,7 +204,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         lbImpactosJugador.setText("Barcos vivos jugador: "+impactosJugador);
         
         // Creamos el tablero de defensa de la IA
-        colocaBarcosIA();
+        barcosIA=LibsIA.colocaBarcosIA(barcosIA);
     }
     
     /**
@@ -247,12 +225,12 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
     public void colocaBarco(int i, int j){
         if(!colision){
             if (orientacionBarco) {
-                for (int k = i; k < Math.min(tableroDefensa.length, i+dimBarco); k++) {
-                    tableroDefensa[k][j].setBackground(colorBarco);
+                for (int k = i; k < Math.min(tableroDefensa.getBtCasilla().length, i+dimBarco); k++) {
+                    tableroDefensa.getBtCasilla()[k][j].setBackground(Libs.colorBarco);
                 }
             }else{
-                for (int k = j; k < Math.min(tableroDefensa.length, j+dimBarco); k++) {
-                    tableroDefensa[i][k].setBackground(colorBarco);
+                for (int k = j; k < Math.min(tableroDefensa.getBtCasilla().length, j+dimBarco); k++) {
+                    tableroDefensa.getBtCasilla()[i][k].setBackground(Libs.colorBarco);
                 }
             }
             numColocaBarco[dimBarco-1]--;
@@ -270,80 +248,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         }
     }
     
-    /**
-     * colocaBarcosIA indica qué barcos debe colocar la IA
-     * 
-     */
-    public void colocaBarcosIA(){
-        situaBarco(1,4);
-        situaBarco(2,3);
-        situaBarco(3,2);
-        situaBarco(4,1);
-    }
     
-    /**
-     * situaBarco se encarga de situar en el tablero de defensa de la IA cierta cantidad
-     * de barcos de la dimensión indicada.
-     * 
-     * Para ello, el metodo generará 3 variables aleatorias, las cuales determinarán 
-     * en qué casilla comenzará el barco y cuál será su orientación
-     * 
-     * Una vez generados estos valores, el programa comprobará si se generan colisiones 
-     * con otros barcos anteriormente colocados, repitiendo en este caso la generación
-     * de la totalidad de dichas variables aleatorias
-     * 
-     * @param numBarcos numero de barcos a colocar
-     * @param dimBarcoIA dimension de dichos barcos
-     */
-    public void situaBarco(int numBarcos, int dimBarcoIA){
-        int i;
-        int j;
-        double posBarco;
-        boolean colisionIA;
-        while(numBarcos>0){
-            i=(int)(Math.random()*10);
-            j=(int)(Math.random()*10);
-            posBarco=Math.random();
-            colisionIA=false;
-            if (posBarco<0.5) { //Barco horizontal
-                if (j+dimBarcoIA>=dimensionTablero) {
-                    colisionIA=true;
-                }else{
-                    for (int k = Math.max(0,j-1); k < Math.min(j+dimBarcoIA+1,dimensionTablero); k++) {
-                        for (int l = Math.max(0,i-1); l < Math.min(i+2,dimensionTablero); l++) {
-                            if (barcosIA[l][k]) {
-                                colisionIA=true;
-                            }
-                        }
-                    }
-                }
-                if (!colisionIA) {
-                    for (int k = j; k < j+dimBarcoIA; k++) {
-                        barcosIA[i][k]=true;
-                    }
-                    numBarcos--;
-                }
-            }else{ //Barco vertical
-               if (i+dimBarcoIA>=dimensionTablero) {
-                    colisionIA=true;
-                }else{
-                    for (int k = Math.max(0,i-1); k < Math.min(i+dimBarcoIA+1,dimensionTablero); k++) {
-                        for (int l = Math.max(0,j-1); l < Math.min(j+2,dimensionTablero); l++) {
-                            if (barcosIA[k][l]) {
-                                colisionIA=true;
-                            }
-                        }
-                    }
-                }
-                if (!colisionIA) {
-                    for (int k = i; k < i+dimBarcoIA; k++) {
-                        barcosIA[k][j]=true;
-                    }
-                    numBarcos--;
-                } 
-            }
-        }
-    }
     
     /**
      * checkGame comprueba si se han dado las condiciones de victoria o derrota,
@@ -366,20 +271,41 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * 
      */
     public void juegaIA(){
-        int i;
-        int j;
-        do{
-            i=(int)(Math.random()*10);
-            j=(int)(Math.random()*10);
-        }while(tableroDefensa[i][j].getBackground().equals(colorTocado)
-            || tableroDefensa[i][j].getBackground().equals(colorAguaTocado));
+        //disparo
+        int[] casillaDisparada = new int[2];
         
-        if (tableroDefensa[i][j].getBackground().equals(colorAgua)) {
-            tableroDefensa[i][j].setBackground(colorAguaTocado);
+        if (!tableroAtaqueIAPrioritario.isEmpty()) {
+            casillaDisparada = tableroAtaqueIAPrioritario.get((int)(Math.random()*tableroAtaqueIAPrioritario.size()));
         }else{
-            tableroDefensa[i][j].setBackground(colorTocado);;
-            impactosJugador--;
-            lbImpactosJugador.setText("Barcos vivos Jugador: "+impactosJugador);
+            casillaDisparada = tableroAtaqueIA.get((int)(Math.random()*tableroAtaqueIA.size()));
+        }
+        
+        int i = casillaDisparada[0];
+        int j = casillaDisparada[1];
+        
+        if (tableroDefensa.getBtCasilla()[i][j].getBackground().equals(Libs.colorAgua)){
+            tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorAguaTocado);
+            Libs.borraValor(tableroAtaqueIA,casillaDisparada);
+            Libs.borraValor(tableroAtaqueIAPrioritario,casillaDisparada);
+        }else if (tableroDefensa.getBtCasilla()[i][j].getBackground().equals(Libs.colorBarco)){
+            tableroDefensa.getBtCasilla()[i][j].setBackground(aciertoIA(i,j));
+            
+            //quito la casilla de la listas de futuros disparos
+            Libs.borraValor(tableroAtaqueIA,casillaDisparada);
+            Libs.borraValor(tableroAtaqueIAPrioritario,casillaDisparada);
+            
+            //y sus diagonales, puesto que no van a tener barcos.
+            //Si no existen, no debería pasar nada
+            Libs.borraValor(tableroAtaqueIA,new int[] {i-1,j-1});
+            Libs.borraValor(tableroAtaqueIA,new int[] {i-1,j+1});
+            Libs.borraValor(tableroAtaqueIA,new int[] {i+1,j-1});
+            Libs.borraValor(tableroAtaqueIA,new int[] {i+1,j+1});
+            
+            Libs.borraValor(tableroAtaqueIAPrioritario,new int[] {i-1,j-1});
+            Libs.borraValor(tableroAtaqueIAPrioritario,new int[] {i-1,j+1});
+            Libs.borraValor(tableroAtaqueIAPrioritario,new int[] {i+1,j-1});
+            Libs.borraValor(tableroAtaqueIAPrioritario,new int[] {i+1,j+1});
+            
         }
         checkGame();
     }
@@ -393,7 +319,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
                 if (barcosIA[i][j]){
-                    tableroAtaque[i][j].setBackground(colorTocado);;
+                    tableroAtaque.getBtCasilla()[i][j].setBackground(Libs.colorTocado);;
                 }
             }
         }
@@ -434,34 +360,34 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         if (dimBarco>0 && faseColocarPiezas) {
             for (int i = 0; i < dimensionTablero; i++) {
                 for (int j = 0; j < dimensionTablero; j++) {
-                    if (e.getSource()==tableroDefensa[i][j]){
+                    if (e.getSource()==tableroDefensa.getBtCasilla()[i][j]){
                         if (orientacionBarco) { // Código apra barcos en vertical
                             if (i+dimBarco>dimensionTablero){
                                 colision=true;
                                 for (int k = i; k < dimensionTablero; k++) {
-                                    if(tableroDefensa[k][j].getBackground()!=colorBarco){
-                                        tableroDefensa[k][j].setBackground(Color.RED);
+                                    if(tableroDefensa.getBtCasilla()[k][j].getBackground()!=Libs.colorBarco){
+                                        tableroDefensa.getBtCasilla()[k][j].setBackground(Color.RED);
                                     }
                                 }
                             }else{
                                 colision=false;
                                 for (int k = Math.max(0,i-1); k < Math.min(i+dimBarco+1,dimensionTablero); k++) {
                                     for (int l = Math.max(0,j-1); l < Math.min(j+2,dimensionTablero); l++) {
-                                        if(tableroDefensa[k][l].getBackground()==colorBarco){
+                                        if(tableroDefensa.getBtCasilla()[k][l].getBackground()==Libs.colorBarco){
                                             colision=true;
                                         }
                                     }
                                 }
                                 if(colision){
                                     for (int k = i; k < i+dimBarco; k++) {
-                                        if(tableroDefensa[k][j].getBackground()!=colorBarco){
-                                            tableroDefensa[k][j].setBackground(Color.RED);
+                                        if(tableroDefensa.getBtCasilla()[k][j].getBackground()!=Libs.colorBarco){
+                                            tableroDefensa.getBtCasilla()[k][j].setBackground(Color.RED);
                                         }
                                     }
                                 }else{
                                     for (int k = i; k < i+dimBarco; k++) {
-                                        if(tableroDefensa[k][j].getBackground()!=colorBarco){
-                                            tableroDefensa[k][j].setBackground(Color.GREEN);
+                                        if(tableroDefensa.getBtCasilla()[k][j].getBackground()!=Libs.colorBarco){
+                                            tableroDefensa.getBtCasilla()[k][j].setBackground(Color.GREEN);
                                         }
                                     }
                                 }
@@ -470,29 +396,29 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
                             if (j+dimBarco>dimensionTablero){
                                 colision=true;
                                 for (int k = j; k < dimensionTablero; k++) {
-                                    if(tableroDefensa[i][k].getBackground()!=colorBarco){
-                                        tableroDefensa[i][k].setBackground(Color.RED);
+                                    if(tableroDefensa.getBtCasilla()[i][k].getBackground()!=Libs.colorBarco){
+                                        tableroDefensa.getBtCasilla()[i][k].setBackground(Color.RED);
                                     }
                                 }
                             }else{
                                 colision=false;
                                 for (int k = Math.max(0,j-1); k < Math.min(j+dimBarco+1,dimensionTablero); k++) {
                                     for (int l = Math.max(0,i-1); l < Math.min(i+2,dimensionTablero); l++) {
-                                        if(tableroDefensa[l][k].getBackground()==colorBarco){
+                                        if(tableroDefensa.getBtCasilla()[l][k].getBackground()==Libs.colorBarco){
                                             colision=true;
                                         }
                                     }
                                 }
                                 if(colision){
                                     for (int k = j; k < j+dimBarco; k++) {
-                                        if(tableroDefensa[i][k].getBackground()!=colorBarco){
-                                            tableroDefensa[i][k].setBackground(Color.RED);
+                                        if(tableroDefensa.getBtCasilla()[i][k].getBackground()!=Libs.colorBarco){
+                                            tableroDefensa.getBtCasilla()[i][k].setBackground(Color.RED);
                                         }
                                     }
                                 }else{
                                     for (int k = j; k < j+dimBarco; k++) {
-                                        if(tableroDefensa[i][k].getBackground()!=colorBarco){
-                                            tableroDefensa[i][k].setBackground(Color.GREEN);
+                                        if(tableroDefensa.getBtCasilla()[i][k].getBackground()!=Libs.colorBarco){
+                                            tableroDefensa.getBtCasilla()[i][k].setBackground(Color.GREEN);
                                         }
                                     }
                                 }
@@ -521,15 +447,15 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         if (dimBarco>0 && faseColocarPiezas) {
            for (int i = 0; i < dimensionTablero; i++) {
                 for (int j = 0; j < dimensionTablero; j++) {
-                    if (e.getSource()==tableroDefensa[i][j]){
-                        for (int k = i; k < Math.min(tableroDefensa.length, i+dimBarco); k++) {
-                            if(tableroDefensa[k][j].getBackground()!=colorBarco){
-                                tableroDefensa[k][j].setBackground(colorAgua);
+                    if (e.getSource()==tableroDefensa.getBtCasilla()[i][j]){
+                        for (int k = i; k < Math.min(tableroDefensa.getBtCasilla().length, i+dimBarco); k++) {
+                            if(tableroDefensa.getBtCasilla()[k][j].getBackground()!=Libs.colorBarco){
+                                tableroDefensa.getBtCasilla()[k][j].setBackground(Libs.colorAgua);
                             }
                         }
-                        for (int k = j; k < Math.min(tableroDefensa.length, j+dimBarco); k++) {
-                            if(tableroDefensa[i][k].getBackground()!=colorBarco){
-                                tableroDefensa[i][k].setBackground(colorAgua);
+                        for (int k = j; k < Math.min(tableroDefensa.getBtCasilla().length, j+dimBarco); k++) {
+                            if(tableroDefensa.getBtCasilla()[i][k].getBackground()!=Libs.colorBarco){
+                                tableroDefensa.getBtCasilla()[i][k].setBackground(Libs.colorAgua);
                             }
                         }
                     }
@@ -587,7 +513,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
                 if(dimBarco>0){
                     for (int i = 0; i < dimensionTablero; i++) {
                         for (int j = 0; j < dimensionTablero; j++) {
-                            if (evt.getSource()==tableroDefensa[i][j]) {
+                            if (evt.getSource()==tableroDefensa.getBtCasilla()[i][j]) {
                                 colocaBarco(i,j);
                             }
                         }
@@ -596,34 +522,141 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
             }else{ //fase de disparos
                 for (int i = 0; i < dimensionTablero; i++) {
                     for (int j = 0; j < dimensionTablero; j++) {
-                        if (evt.getSource()==tableroAtaque[i][j] 
-                         && tableroAtaque[i][j].getBackground()!= colorAgua
-                         && tableroAtaque[i][j].getBackground()!= colorTocado) {
+                        if (evt.getSource()==tableroAtaque.getBtCasilla()[i][j] 
+                         && tableroAtaque.getBtCasilla()[i][j].getBackground()!= Libs.colorAgua
+                         && tableroAtaque.getBtCasilla()[i][j].getBackground()!= Libs.colorTocado
+                         && tableroAtaque.getBtCasilla()[i][j].getBackground()!= Libs.colorHundido) {
                             if (barcosIA[i][j]) {
-                                tableroAtaque[i][j].setBackground(colorTocado);
-                                impactosIA--;
-                                lbImpactosIA.setText("Barcos vivos IA: "+impactosIA);
+                                tableroAtaque.getBtCasilla()[i][j].setBackground(aciertoJugador(i,j));
                             }else{
-                                tableroAtaque[i][j].setBackground(colorAgua);
+                                tableroAtaque.getBtCasilla()[i][j].setBackground(Libs.colorAgua);
                             }
                             checkGame();
 
-                            Timer jugadaIA;
-                            int delay = 750; //milisegundos
-                            ActionListener accionIA = new ActionListener() {
-                                public void actionPerformed(ActionEvent evt) {
-                                    juegaIA();
-                                }
-                            };
-                            jugadaIA = new Timer(delay, accionIA); 
-                            jugadaIA.setRepeats(false);
-                            jugadaIA.start();
+                            if (!faseColocarPiezas){ //Con esto evitamos que la maquina juege si ya terminó la partida
+                                Timer jugadaIA;
+                                int delay = 750; //milisegundos
+                                ActionListener accionIA = new ActionListener() {
+                                    public void actionPerformed(ActionEvent evt) {
+                                        juegaIA();
+                                    }
+                                };
+                                jugadaIA = new Timer(delay, accionIA); 
+                                jugadaIA.setRepeats(false);
+                                jugadaIA.start();
+                            }
                         }
                     }
                 }
             }
         }
+    }
+    
+    /**
+     * Dadas unas coordenadas (i,j) derivadas de un impacto, el metodo devuelve
+     * un color según haya sido "tocado" o "hundido"
+     * 
+     * @param i
+     * @param j
+     * @return colorHundido si es "hundido", colorTocado si es "tocado"
+     */
+    public Color aciertoJugador(int i, int j){
+        if (estaHundido(i,j)) {
+            impactosIA--;
+            lbImpactosIA.setText("Barcos vivos IA: "+impactosIA);
+            return Libs.colorHundido;
+        }else{
+            return Libs.colorTocado;
+        }
+    }
+    
+    /**
+     * Comprueba si el impacto es un "tocado" o un "hundido". 
+     * 
+     * Para ello, genera las cuatro coordenadas anexas a la casilla (i,j) indicada
+     * por parámetro. Para cada una de ellas, recorre la semirrecta hasta que
+     * 
+     * a) se sale del tablero
+     * b) encuentra una casilla de agua
+     * c) encuentra una casilla de barco que aún no ha recibido impacto
+     * 
+     * Si se da c), el metodo termina y devuelve un "false" para indicar que el
+     * barco aun tiene casillas sin impactar
+     * 
+     * Si de dan a) o b), prueba con la siguiente semirrecta. 
+     * 
+     * Si terminan las cuatro semirrectas sin devolver un "false", el barco se considera
+     * "hundido" y devuelve un "true"
+     *
+     * @param i
+     * @param j
+     * @return true si está hundido, false si no.
+     */
+    public boolean estaHundido(int i,int j){
+               
+        int[] casillaDer = {i,j+1};
+        int[] casillaIzq = {i,j-1};
+        int[] casillaArr = {i-1,j};
+        int[] casillaAbj = {i+1,j};
         
+        while (casillaDer[1]<dimensionTablero && barcosIA[casillaDer[0]][casillaDer[1]] ){
+            if (tableroAtaque.getBtCasilla()[casillaDer[0]][casillaDer[1]].getBackground()!=Libs.colorTocado){
+                return false;
+            }
+            casillaDer[1]++;
+        }
+        
+        while (casillaIzq[1]>=0 && barcosIA[casillaIzq[0]][casillaIzq[1]] ){
+            if (tableroAtaque.getBtCasilla()[casillaIzq[0]][casillaIzq[1]].getBackground()!=Libs.colorTocado){
+                return false;
+            }
+            casillaIzq[1]--;
+        }
+        
+        while (casillaAbj[0]<dimensionTablero && barcosIA[casillaAbj[0]][casillaAbj[1]] ){
+            if (tableroAtaque.getBtCasilla()[casillaAbj[0]][casillaAbj[1]].getBackground()!=Libs.colorTocado){
+                return false;
+            }
+            casillaAbj[0]++;
+        }
+        
+        while (casillaArr[0]>=0 && barcosIA[casillaArr[0]][casillaArr[1]] ){
+            if (tableroAtaque.getBtCasilla()[casillaArr[0]][casillaArr[1]].getBackground()!=Libs.colorTocado){
+                return false;
+            }
+            casillaArr[0]--;
+        }
+        
+        
+        return true;
+    }
+
+    public Color aciertoIA(int i, int j){
+        
+        //Añado sus extensiones horizontales-verticales a la lista prioritaria
+        //si aun están en la lista inicial
+            
+        if (Libs.borraValor(tableroAtaqueIA,new int[] {i,j+1})) {
+            tableroAtaqueIAPrioritario.add(new int[] {i,j+1});
+        }
+        if (Libs.borraValor(tableroAtaqueIA,new int[] {i,j-1})) {
+            tableroAtaqueIAPrioritario.add(new int[] {i,j-1});
+        }
+        if (Libs.borraValor(tableroAtaqueIA,new int[] {i+1,j})) {
+            tableroAtaqueIAPrioritario.add(new int[] {i+1,j});
+        }
+        if (Libs.borraValor(tableroAtaqueIA,new int[] {i-1,j})) {
+            tableroAtaqueIAPrioritario.add(new int[] {i-1,j});
+        }
+            
+        if (LibsIA.estaHundidoIA(tableroDefensa.getBtCasilla(),i,j)) {
+            impactosJugador--;
+            lbImpactosJugador.setText("Barcos vivos Jugador: "+impactosJugador);
+            tableroAtaqueIAPrioritario.clear();
+            return Libs.colorHundido;
+        }else{
+            return Libs.colorTocado;
+        }
     }
     
     /**
@@ -650,7 +683,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
      * I DO WHAT I WANT ~ r/firstworldanarchists
      */
     @SuppressWarnings("unchecked")
-    // <editor-fold defaultstate="collapsed" desc="Generated Code">                          
+    // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
         menuBar = new javax.swing.JMenuBar();
@@ -663,7 +696,8 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         menuItSalir = new javax.swing.JMenuItem();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setMinimumSize(new java.awt.Dimension(800, 600));
+        setTitle("Hundir la flota");
+        setMinimumSize(new java.awt.Dimension(850, 600));
         setPreferredSize(new java.awt.Dimension(800, 600));
 
         menuJuego.setText("Juego");
@@ -719,37 +753,37 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 800, Short.MAX_VALUE)
+            .addGap(0, 883, Short.MAX_VALUE)
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGap(0, 429, Short.MAX_VALUE)
+            .addGap(0, 828, Short.MAX_VALUE)
         );
 
         pack();
-    }// </editor-fold>                        
+    }// </editor-fold>//GEN-END:initComponents
 
-    private void menuItFinalizarActionPerformed(java.awt.event.ActionEvent evt) {                                                
+    private void menuItFinalizarActionPerformed(java.awt.event.ActionEvent evt) {
         muestraSolucion();
-    }                                               
+    }
 
 /**
  * Abandona el juego
  * 
  * @param evt 
  */    
-    private void menuItSalirActionPerformed(java.awt.event.ActionEvent evt) {                                            
+    private void menuItSalirActionPerformed(java.awt.event.ActionEvent evt) {
         System.exit(0);
-    }                                           
+    }
 
 /**
  * Reinicia el juego
  * 
  * @param evt 
  */
-    private void menuItNuevoActionPerformed(java.awt.event.ActionEvent evt) {                                            
+    private void menuItNuevoActionPerformed(java.awt.event.ActionEvent evt) {
         initMoreComponents();
-    }                                           
+    }
 
 /**
  * Ejecuta el menú de guardar partida. El archivo destino deberá tener extensión
@@ -757,7 +791,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
  * 
  * @param evt 
  */
-    private void menuItGuardarActionPerformed(java.awt.event.ActionEvent evt) {                                              
+    private void menuItGuardarActionPerformed(java.awt.event.ActionEvent evt) {
         File fichero;
         JFileChooser eligeFichero;
         FileNameExtensionFilter filter;
@@ -782,7 +816,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
                 }
             }
         }
-    }                                             
+    }
 
 /**
  * Ejecuta el menú de cargar partida. Por defecto, el programa buscará archivos
@@ -790,7 +824,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
  * 
  * @param evt 
  */ 
-    private void menuItCargarActionPerformed(java.awt.event.ActionEvent evt) {                                             
+    private void menuItCargarActionPerformed(java.awt.event.ActionEvent evt) {
         JFileChooser eligeFichero;        
         eligeFichero = new JFileChooser();
         FileNameExtensionFilter filter;
@@ -803,7 +837,7 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         if (seleccion == JFileChooser.APPROVE_OPTION){            
             fichero = eligeFichero.getSelectedFile();
             try {
-                cargarDatos(cargaRegistro(fichero));
+                cargarDatos(Libs.cargaRegistro(fichero));
                 faseColocarPiezas=false;
             } catch (FileNotFoundException ex) {
                 JOptionPane.showMessageDialog(this, "El fichero indicado no existe");
@@ -814,23 +848,9 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
                 Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
             }
         }
-    }                                            
-
-     /**
-     * Añade un valor entero al final del fichero indicado,
-     * mediante el uso de RandomAccessFile
-     *
-     * @param fichero fichero donde se añadirá el valor entero
-     * @param entero valor entero que se añadirá al fichero
-     * @throws FileNotFoundException
-     * @throws IOException
-     */
-    public static void grabarDatos(File fichero, int entero) throws FileNotFoundException, IOException{
-        RandomAccessFile rndFile = new RandomAccessFile(fichero,"rw"); //creo un RandomAccessFile que permite lectura y escritura (RW)
-        rndFile.seek(rndFile.length()); //Me posiciono, mediante el seek, al final del fichero
-        rndFile.writeInt(entero); // grabo el dato
-        rndFile.close();
     }
+
+
     
     /**
      * guardarDatos recorre las diferentes variables de juego y las codifica,
@@ -845,14 +865,16 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         //Tablero defensa del jugador
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
-                if (tableroDefensa[i][j].getBackground()==colorAgua) {
-                    grabarDatos(fichero, 0);
-                }else if (tableroDefensa[i][j].getBackground()==colorBarco){
-                    grabarDatos(fichero, 1);
-                }else if (tableroDefensa[i][j].getBackground()==colorTocado){
-                    grabarDatos(fichero, 2);
-                }else if (tableroDefensa[i][j].getBackground()==colorAguaTocado){
-                    grabarDatos(fichero, 3);
+                if (tableroDefensa.getBtCasilla()[i][j].getBackground()==Libs.colorAgua) {
+                    Libs.grabarDatos(fichero, 0);
+                }else if (tableroDefensa.getBtCasilla()[i][j].getBackground()==Libs.colorBarco){
+                    Libs.grabarDatos(fichero, 1);
+                }else if (tableroDefensa.getBtCasilla()[i][j].getBackground()==Libs.colorTocado){
+                    Libs.grabarDatos(fichero, 2);
+                }else if (tableroDefensa.getBtCasilla()[i][j].getBackground()==Libs.colorAguaTocado){
+                    Libs.grabarDatos(fichero, 3);
+                }else if (tableroDefensa.getBtCasilla()[i][j].getBackground()==Libs.colorHundido){
+                    Libs.grabarDatos(fichero, 5);
                 }else{
                     throw new Exception();
                 }
@@ -862,12 +884,14 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         //Tablero ataque del jugador
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
-                if (tableroAtaque[i][j].getBackground()==colorAgua) {
-                    grabarDatos(fichero, 0);
-                }else if (tableroAtaque[i][j].getBackground()==colorTocado){
-                    grabarDatos(fichero, 2);
+                if (tableroAtaque.getBtCasilla()[i][j].getBackground()==Libs.colorAgua) {
+                    Libs.grabarDatos(fichero, 0);
+                }else if (tableroAtaque.getBtCasilla()[i][j].getBackground()==Libs.colorTocado){
+                    Libs.grabarDatos(fichero, 2);
+                }else if (tableroAtaque.getBtCasilla()[i][j].getBackground()==Libs.colorHundido){
+                    Libs.grabarDatos(fichero, 5);
                 }else{
-                    grabarDatos(fichero, 4);
+                    Libs.grabarDatos(fichero, 4);
                 }
             }
         }
@@ -876,9 +900,9 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
                 if (barcosIA[i][j]) {
-                    grabarDatos(fichero, 1);
+                    Libs.grabarDatos(fichero, 1);
                 }else{
-                    grabarDatos(fichero, 0);
+                    Libs.grabarDatos(fichero, 0);
                 }
             }
         }
@@ -886,34 +910,27 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         //turno de juego
         
         if (turnoJugador) {
-            grabarDatos(fichero, 1);
+            Libs.grabarDatos(fichero, 1);
         }else{
-            grabarDatos(fichero, 0);
-         }
+            Libs.grabarDatos(fichero, 0);
+        }
         
         //puntos de los jugadores
-        grabarDatos(fichero, impactosJugador);
-        grabarDatos(fichero, impactosIA);
-    }
-  
-    /**
-     * cargaFichero usa randomAccessFile para leer el los valores enteros de
-     * un archivo y devuelve un array con todos los datos leidos
-     * 
-     * 
-     * @param fichero fichero a leer
-     * @return
-     * @throws FileNotFoundException
-     * @throws IOException 
-     */
-    public static int[] cargaRegistro(File fichero) throws FileNotFoundException, IOException{
-        RandomAccessFile rndFile = new RandomAccessFile(fichero,"r"); //Random de solo lectura
-        int[] cargaRegistro = new int[(int)(rndFile.length()/4)];
-        for (int i = 0; i < cargaRegistro.length; i++) {
-            cargaRegistro[i]=rndFile.readInt();
+        Libs.grabarDatos(fichero, impactosJugador);
+        Libs.grabarDatos(fichero, impactosIA);
+        
+        //tamaño y estado del tablero de tiradas de la IA
+        Libs.grabarDatos(fichero,tableroAtaqueIA.size());
+        for (int i = 0; i < tableroAtaqueIA.size(); i++) {
+            Libs.grabarDatos(fichero,tableroAtaqueIA.get(i)[0]);
+            Libs.grabarDatos(fichero,tableroAtaqueIA.get(i)[1]);
         }
-        rndFile.close(); //Cerrar, esto siempre
-        return cargaRegistro;
+        
+        Libs.grabarDatos(fichero,tableroAtaqueIAPrioritario.size());
+        for (int i = 0; i < tableroAtaqueIAPrioritario.size(); i++) {
+            Libs.grabarDatos(fichero,tableroAtaqueIAPrioritario.get(i)[0]);
+            Libs.grabarDatos(fichero,tableroAtaqueIAPrioritario.get(i)[1]);
+        }
     }
     
     /**
@@ -931,13 +948,15 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
                 if (cargaRegistro[posicion]==0) {
-                    tableroDefensa[i][j].setBackground(colorAgua);
+                    tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorAgua);
                 }else if (cargaRegistro[posicion]==1){
-                    tableroDefensa[i][j].setBackground(colorBarco);
+                    tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorBarco);
                 }else if (cargaRegistro[posicion]==2){
-                    tableroDefensa[i][j].setBackground(colorTocado);
+                    tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorTocado);
                 }else if (cargaRegistro[posicion]==3){
-                    tableroDefensa[i][j].setBackground(colorAguaTocado);
+                    tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorAguaTocado);
+                }else if (cargaRegistro[posicion]==5){
+                    tableroDefensa.getBtCasilla()[i][j].setBackground(Libs.colorHundido);
                 }else{
                     throw new Exception();
                 }
@@ -949,11 +968,13 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         for (int i = 0; i < dimensionTablero; i++) {
             for (int j = 0; j < dimensionTablero; j++) {
                 if (cargaRegistro[posicion]==0) {
-                    tableroAtaque[i][j].setBackground(colorAgua);
+                    tableroAtaque.getBtCasilla()[i][j].setBackground(Libs.colorAgua);
                 }else if (cargaRegistro[posicion]==2){
-                    tableroAtaque[i][j].setBackground(colorTocado);
+                    tableroAtaque.getBtCasilla()[i][j].setBackground(Libs.colorTocado);
+                }else if (cargaRegistro[posicion]==5){
+                    tableroAtaque.getBtCasilla()[i][j].setBackground(Libs.colorHundido);
                 }else{
-                    tableroAtaque[i][j].setBackground(null);
+                    tableroAtaque.getBtCasilla()[i][j].setBackground(null);
                 }
                 posicion++;
             }
@@ -972,7 +993,6 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         }
         
         //turno de juego
-        
         if (cargaRegistro[posicion]==1) {
             turnoJugador=true;
         }else{
@@ -984,6 +1004,34 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
         impactosJugador=cargaRegistro[posicion];
         posicion++;
         impactosIA=cargaRegistro[posicion];
+        posicion++;
+                
+        //cargo el tablero de la IA
+        int dimTableroIA = cargaRegistro[posicion];
+        posicion++;
+        
+        int posi;
+        int posj;
+        tableroAtaqueIA.clear();
+        for (int i = 0; i < dimTableroIA; i++) {
+            posi=cargaRegistro[posicion];
+            posicion++;
+            posj=cargaRegistro[posicion];
+            posicion++;
+            tableroAtaqueIA.add(new int[] {posi,posj});
+        }
+        
+        int dimTableroIAPrioritario = cargaRegistro[posicion];
+        posicion++;
+        
+        tableroAtaqueIAPrioritario.clear();
+        for (int i = 0; i < dimTableroIAPrioritario; i++) {
+            posi=cargaRegistro[posicion];
+            posicion++;
+            posj=cargaRegistro[posicion];
+            posicion++;
+            tableroAtaqueIAPrioritario.add(new int[] {posi,posj});
+        }
         
         //Actualizo el interfaz
         lbImpactosJugador.setText("Barcos vivos jugador: "+impactosJugador);
@@ -1031,14 +1079,4 @@ public class Main extends javax.swing.JFrame implements ActionListener, MouseLis
             }
         });
     }
-    // Variables declaration - do not modify                     
-    private javax.swing.JPopupMenu.Separator jSeparator1;
-    private javax.swing.JMenuBar menuBar;
-    private javax.swing.JMenuItem menuItCargar;
-    private javax.swing.JMenuItem menuItFinalizar;
-    private javax.swing.JMenuItem menuItGuardar;
-    private javax.swing.JMenuItem menuItNuevo;
-    private javax.swing.JMenuItem menuItSalir;
-    private javax.swing.JMenu menuJuego;
-    // End of variables declaration                   
 }
